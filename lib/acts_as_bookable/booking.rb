@@ -5,8 +5,9 @@ module ActsAsBookable
   class Booking < ::ActiveRecord::Base
     self.table_name = 'acts_as_bookable_bookings'
 
-    belongs_to :bookable, polymorphic: true
-    belongs_to :booker,   polymorphic: true
+    belongs_to :bookable,    polymorphic: true
+    belongs_to :booker,      polymorphic: true
+    belongs_to :zen_booking, polymorphic: true
 
     validates_presence_of :bookable
     validates_presence_of :booker
