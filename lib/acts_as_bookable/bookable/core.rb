@@ -164,6 +164,7 @@ module ActsAsBookable::Bookable
       def check_availability!(opts)
         # validates options
         self.validate_booking_options!(opts)
+        check_schedule = opts.fetch(:check_schedule, true)
 
         # Capacity check (done first because it doesn't require additional queries)
         if self.booking_opts[:capacity_type] != :none
@@ -176,33 +177,35 @@ module ActsAsBookable::Bookable
         ##
         # Time check
         #
-        if self.booking_opts[:time_type] == :range
-          time_check_ok = true
-          # If it's bookable across recurrences, just check start time and end time
-          if self.booking_opts[:bookable_across_occurrences]
-            # Check start time
-            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_start]))
-              time_check_ok = false
+        if check_schedule
+          if self.booking_opts[:time_type] == :range
+            time_check_ok = true
+            # If it's bookable across recurrences, just check start time and end time
+            if self.booking_opts[:bookable_across_occurrences]
+              # Check start time
+              if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_start]))
+                time_check_ok = false
+              end
+              # Check end time
+              if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_end]))
+                time_check_ok = false
+              end
+              # If it's not bookable across recurrences, check if the whole interval is included in an occurrence
+            else
+              # Check the whole interval
+              if !(ActsAsBookable::TimeUtils.interval_in_schedule?(self.schedule, opts[:time_start], opts[:time_end]))
+                time_check_ok = false
+              end
             end
-            # Check end time
-            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_end]))
-              time_check_ok = false
-            end
-          # If it's not bookable across recurrences, check if the whole interval is included in an occurrence
-          else
-            # Check the whole interval
-            if !(ActsAsBookable::TimeUtils.interval_in_schedule?(self.schedule, opts[:time_start], opts[:time_end]))
-              time_check_ok = false
+            # If something went wrong
+            unless time_check_ok
+              raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_interval', model: self.class.to_s, time_start: opts[:time_start], time_end: opts[:time_end])
             end
           end
-          # If something went wrong
-          unless time_check_ok
-            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_interval', model: self.class.to_s, time_start: opts[:time_start], time_end: opts[:time_end])
-          end
-        end
-        if self.booking_opts[:time_type] == :fixed
-          if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time]))
-            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_time', model: self.class.to_s, time: opts[:time])
+          if self.booking_opts[:time_type] == :fixed
+            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time]))
+              raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_time', model: self.class.to_s, time: opts[:time])
+            end
           end
         end
 
