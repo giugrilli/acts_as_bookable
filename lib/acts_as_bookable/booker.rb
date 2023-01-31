@@ -15,7 +15,7 @@ module ActsAsBookable
       #   end
       def acts_as_booker(opts={})
         class_eval do
-          has_many :bookings, as: :booker, dependent: :destroy, class_name: '::ActsAsBookable::Booking'
+          has_many :bookings, -> { order(created_at: :desc) }, as: :booker, dependent: :destroy, class_name: '::ActsAsBookable::Booking'
         end
 
         include ActsAsBookable::Booker::InstanceMethods
